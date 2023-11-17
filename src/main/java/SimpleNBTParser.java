@@ -7,7 +7,6 @@ import java.util.zip.GZIPInputStream;
 
 public class SimpleNBTParser {
 
-    // Tag IDs, unused for now
     public static final byte BYTE = 1;
     public static final byte SHORT = 2;
     public static final byte INT = 3;
