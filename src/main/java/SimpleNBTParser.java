@@ -1,13 +1,16 @@
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Base64;
 import java.util.zip.GZIPInputStream;
 
 public class SimpleNBTParser {
 
-    // Tag IDs, unused for now
     public static final byte BYTE = 1;
     public static final byte SHORT = 2;
     public static final byte INT = 3;
@@ -21,31 +24,33 @@ public class SimpleNBTParser {
     public static final byte INT_ARRAY = 11;
     public static final byte LONG_ARRAY = 12;
 
-    public static Map<String, Object> readBase64(String string) throws IOException {
+    private static final SimpleNBTParser INSTANCE = new SimpleNBTParser();
+
+    public static JsonObject readBase64(String string) throws IOException {
         return readBytes(new GZIPInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(string))).readAllBytes());
     }
 
-    public static Map<String, Object> readBytes(byte[] bytes) {
-        return new SimpleNBTParser().readCompound(ByteBuffer.wrap(bytes));
+    public static JsonObject readBytes(byte[] bytes) {
+        return INSTANCE.readCompound(ByteBuffer.wrap(bytes));
     }
 
     private SimpleNBTParser() {} // Utility class, no instantiation
 
-    private Object read(byte tagId, ByteBuffer buffer) {
+    private JsonElement read(byte tagId, ByteBuffer buffer) {
         return switch (tagId) {
-            case BYTE -> buffer.get();
-            case SHORT -> buffer.getShort();
-            case INT -> buffer.getInt();
-            case LONG -> buffer.getLong();
-            case FLOAT -> buffer.getFloat();
-            case DOUBLE -> buffer.getDouble();
+            case BYTE -> new JsonPrimitive(buffer.get());
+            case SHORT -> new JsonPrimitive(buffer.getShort());
+            case INT -> new JsonPrimitive(buffer.getInt());
+            case LONG -> new JsonPrimitive(buffer.getLong());
+            case FLOAT -> new JsonPrimitive(buffer.getFloat());
+            case DOUBLE -> new JsonPrimitive(buffer.getDouble());
             case BYTE_ARRAY -> readByteArray(buffer);
             case STRING -> readString(buffer);
             case TAG_LIST -> readList(buffer);
             case COMPOUND_TAG -> readCompound(buffer);
             case INT_ARRAY -> readIntArray(buffer);
             case LONG_ARRAY -> readLongArray(buffer);
-            default -> throw new IllegalArgumentException("Invalid NBT tag provided");
+            default -> throw new IllegalArgumentException("Invalid NBT tag ID provided");
         };
     }
 
@@ -56,47 +61,49 @@ public class SimpleNBTParser {
 
         buffer.get(nameBytes);
 
-        return new String(nameBytes, StandardCharsets.UTF_8);
+        return new String(nameBytes);
     }
 
-    private byte[] readByteArray(ByteBuffer buffer) {
+    private JsonArray readByteArray(ByteBuffer buffer) {
+
+        JsonArray array = new JsonArray();
 
         int size = buffer.getInt();
-
-        byte[] bytes = new byte[size];
-
-        buffer.get(bytes);
-
-        return bytes;
-    }
-
-    private int[] readIntArray(ByteBuffer buffer) {
-
-        int size = buffer.getInt();
-
-        int[] ints = new int[size];
 
         for (int i = 0; i < size; i++) {
-            ints[i] = buffer.getInt();
+            array.add(buffer.get());
         }
 
-        return ints;
+        return array;
     }
 
-    private long[] readLongArray(ByteBuffer buffer) {
+    private JsonArray readIntArray(ByteBuffer buffer) {
 
         int size = buffer.getInt();
 
-        long[] longs = new long[size];
+        JsonArray array = new JsonArray();
 
         for (int i = 0; i < size; i++) {
-            longs[i] = buffer.getLong();
+            array.add(buffer.getInt());
         }
 
-        return longs;
+        return array;
     }
 
-    private String readString(ByteBuffer buffer) {
+    private JsonArray readLongArray(ByteBuffer buffer) {
+
+        int size = buffer.getInt();
+
+        JsonArray array = new JsonArray();
+
+        for (int i = 0; i < size; i++) {
+            array.add(buffer.getLong());
+        }
+
+        return array;
+    }
+
+    private JsonPrimitive readString(ByteBuffer buffer) {
 
         int length = buffer.getShort() & 0xFF;
 
@@ -104,37 +111,36 @@ public class SimpleNBTParser {
 
         buffer.get(bytes);
 
-        return new String(bytes, StandardCharsets.UTF_8);
+        return new JsonPrimitive(new String(bytes));
     }
 
-    private List<Object> readList(ByteBuffer buffer) {
+    private JsonArray readList(ByteBuffer buffer) {
 
         byte tagId = buffer.get();
         int size = buffer.getInt();
 
-        List<Object> list = new ArrayList<>(size);
+        JsonArray array = new JsonArray();
 
         for (int i = 0; i < size; i++) {
-            list.add(read(tagId, buffer));
+            array.add(read(tagId, buffer));
         }
 
-        return list;
+        return array;
     }
 
-    private Map<String, Object> readCompound(ByteBuffer buffer) {
+    private JsonObject readCompound(ByteBuffer buffer) {
 
-        Map<String, Object> compound = new HashMap<>();
+        JsonObject compound = new JsonObject();
 
         byte tagId = buffer.get();
 
         while (tagId != 0) {
 
             String name = readName(buffer);
-            Object value = read(tagId, buffer);
+            JsonElement value = read(tagId, buffer);
 
-            compound.put(name, value);
+            compound.add(name, value);
 
-            // The end has been reached
             if (!buffer.hasRemaining()) {
                 return compound;
             }

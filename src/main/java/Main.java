@@ -1,29 +1,17 @@
+import com.google.gson.JsonObject;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
 
         String b64data = "H4sIAAAAAAAAAO3Pu0rEQBgF4D/ZZE2iqAgWdmMtFlaKWBjjrgpmA7GwlNEZswO5yGSWqC+U98iDicmKsI2CjdVpD//lfAGRT5YKiOjQJlsJ690iN6oWpXEDGhmejci/VkJOc57V/dRHQGtC1S85f/PJua209PrUpt2uPbnQslFlxm7KTEuhZGloo2ufuzaPkjhOZh45M15I2uzDmGcFZ5GWvKCAtiavRvPQGK0eF0bW3lCF1uPwKg4fonQSxsOP8SUveCaX/4aq4++qZ3+o6tB21x5/XTplXft0cNSne339O8NNzbgQUrBmLktWzyuzTzurBBamaXK/CpnmqjQs1LpqfoS4y61fCecggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAII/06gT/oVR3M8IgAA";
+        String b64data2 = "H4sIAAAAAAAAAF2US28iRxCAy/Z6A2QlK5e8pESTyI6MvNjzZMA3DCyMl4ftwcZwsZqZGhiYB5npWS++5QfkGCmXSLnxB3LMiV8S5YdEqQHbuwlC6u6qr17dNZUDyMKWmwOArW3Ydu2tn7dgtxomAd/KwQ5n4yy8wMCaQPrbgWzTtfGNx8YxHf/JQc6cJZ7XvQ8wysC2YcO+WnYsZ6RgwWY6FhTHZoWR6pQLim47GrNKzshWyO4iCucYcRfjLGQ4vudJhPE6jQzs3jAvQfgDF+fi8HYi2rfnnrUwinTumaLXNaZz3QhuFqOqUTR80jcrxdai/BGrcdbXvIFyPhkGl8nIvxFbypWHzSvJ8q/fdWverF2zxEH/UhtMZ1rnoa52HjxvMG0vOv3z2bAx9NsPA6XTHyjtqSF2a9fywL+Uh7R2+8Npt3FJss603Ws/DGvWQ7tWkYbV87JzK76lCnLwie3Gc48t6O5aYYQZEn4O366WegNZJJgWyU6F1dKWyxotpUNNl/NwSPpq5HKhOmGBtQasI+2AlvLhkXyQX5MkyMPrJ7LGfDZ+JJUnVH1CdflYIvqE6LMwSGKhwjmzZoI5R7Q3Rur/bWizTqSJzOOTFGJHkqRsKEl7pGRFPtZLefiByBo6GMS4QYvio79HUJKV42IevifuOSo7Uv8LlY5lNU9XJJG0EYX3fCLc0PZ1SlGbcLS4GwYfZL1JGAWxYBgGGe2vlsU31IKCiVxYl3kqmDP0kIcRwfqheKJuEmhELODxumzp799+EkweYTCmYKRjgZ160sk7KX/9XfjoelO9Q87wHUYL+HpNjaS0UP050Mz1vPSLOCBhnVkTYe6ihcJ4E5KlVUupQYxWSKG+oa0Vhp4d3gdChHayqZD+ozBA+JTU1D7cDcbfkVNKXu5NXPIT+RRr45qOSWAjs4W//vwlpb5aLbXV0qtfGFWhdt1p1LsdoVlvteu9DLzoMB/hSyJa7njCP1xQEz0fOXXsXv09jxg1SOSOEo5xBj6zk2CMYXAXp8XdRfgjvKpWepVqt31mnkrqDnwxYjGanPGzMIz5BUYWBjQwkJLJZiDjh7bruBjBrpcGzaTTBfbMt/VWvde9utvkloNX6XSha/LJON6Bl3z9uumw2YHc/Pn5SbBL2vG6P9IDUFlJQi73Ra2kOdKoWNCKolhQSxIWyo6tFxzGtKJdLmlqyaLJ5XL073iaEFlnIMtdH2PO/DnsSdJJ6URWhPKpVhIqbYBteLl5fBp58C+BOkCyJAUAAA\u003d\u003d";
 
-        Map<String, Object> data = SimpleNBTParser.readBase64(b64data);
+        JsonObject data = SimpleNBTParser.readBase64(b64data2);
 
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            if (entry.getValue() instanceof HashMap<?, ?> map) {
-                for (Map.Entry<?, ?> entry2 : map.entrySet()) {
-                    if (entry2.getValue() instanceof ArrayList<?> list) {
-                        for (Object object : list) {
-                            if (object instanceof HashMap<?,?> map1) {
-                                System.out.println(map1.get("tag"));
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        System.out.println(data);
 
     }
 
