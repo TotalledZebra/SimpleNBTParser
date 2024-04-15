@@ -10,10 +10,14 @@ repositories {
 }
 
 dependencies {
-    implementation("com.google.code.gson:gson:2.7")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.15.1")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.14.2")
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
 }
+
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()

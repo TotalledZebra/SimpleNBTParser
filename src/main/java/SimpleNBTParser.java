@@ -1,16 +1,17 @@
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.zip.GZIPInputStream;
 
 public class SimpleNBTParser {
 
+    public static final byte END = 0;
     public static final byte BYTE = 1;
     public static final byte SHORT = 2;
     public static final byte INT = 3;
@@ -24,51 +25,71 @@ public class SimpleNBTParser {
     public static final byte INT_ARRAY = 11;
     public static final byte LONG_ARRAY = 12;
 
+
     private static final SimpleNBTParser INSTANCE = new SimpleNBTParser();
 
-    public static JsonObject readBase64(String string) throws IOException {
+    public static JsonNode readBase64(String string) throws IOException {
         return readBytes(new GZIPInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(string))).readAllBytes());
     }
 
-    public static JsonObject readBytes(byte[] bytes) {
-        return INSTANCE.readCompound(ByteBuffer.wrap(bytes));
+    public static JsonNode readBytes(byte[] bytes) {
+
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
+        byte tagId = buffer.get();
+        String name = INSTANCE.readName(buffer);
+
+        // If the first tag has a name, wrap the data in a JsonObject
+        if (name.length() > 0) {
+
+            ObjectNode object = Json.createObject();
+
+            JsonNode value = INSTANCE.readTag(tagId, buffer);
+
+            object.set(name, value);
+
+            return object;
+        }
+
+        return INSTANCE.readTag(tagId, buffer);
     }
 
     private SimpleNBTParser() {} // Utility class, no instantiation
 
-    private JsonElement read(byte tagId, ByteBuffer buffer) {
+    private JsonNode readTag(byte tagId, ByteBuffer buffer) {
         return switch (tagId) {
-            case BYTE -> new JsonPrimitive(buffer.get());
-            case SHORT -> new JsonPrimitive(buffer.getShort());
-            case INT -> new JsonPrimitive(buffer.getInt());
-            case LONG -> new JsonPrimitive(buffer.getLong());
-            case FLOAT -> new JsonPrimitive(buffer.getFloat());
-            case DOUBLE -> new JsonPrimitive(buffer.getDouble());
+            case END -> null;
+            case BYTE -> Json.createNode(buffer.get());
+            case SHORT -> Json.createNode(buffer.getShort());
+            case INT -> Json.createNode(buffer.getInt());
+            case LONG -> Json.createNode(buffer.getLong());
+            case FLOAT -> Json.createNode(buffer.getFloat());
+            case DOUBLE -> Json.createNode(buffer.getDouble());
             case BYTE_ARRAY -> readByteArray(buffer);
             case STRING -> readString(buffer);
             case TAG_LIST -> readList(buffer);
             case COMPOUND_TAG -> readCompound(buffer);
             case INT_ARRAY -> readIntArray(buffer);
             case LONG_ARRAY -> readLongArray(buffer);
-            default -> throw new IllegalArgumentException("Invalid NBT tag ID provided");
+            default -> throw new IllegalArgumentException("Invalid NBT tag ID provided (" + tagId + "). Buffer position: " + buffer.position());
         };
     }
 
     private String readName(ByteBuffer buffer) {
 
-        int size = buffer.getShort() & 0xFF;
+        int size = buffer.getShort() & 0xFFFF;
         byte[] nameBytes = new byte[size];
 
         buffer.get(nameBytes);
 
-        return new String(nameBytes);
+        return new String(nameBytes, StandardCharsets.UTF_8);
     }
 
-    private JsonArray readByteArray(ByteBuffer buffer) {
-
-        JsonArray array = new JsonArray();
+    private ArrayNode readByteArray(ByteBuffer buffer) {
 
         int size = buffer.getInt();
+
+        ArrayNode array = Json.createArray();
 
         for (int i = 0; i < size; i++) {
             array.add(buffer.get());
@@ -77,11 +98,11 @@ public class SimpleNBTParser {
         return array;
     }
 
-    private JsonArray readIntArray(ByteBuffer buffer) {
+    private ArrayNode readIntArray(ByteBuffer buffer) {
 
         int size = buffer.getInt();
 
-        JsonArray array = new JsonArray();
+        ArrayNode array = Json.createArray();
 
         for (int i = 0; i < size; i++) {
             array.add(buffer.getInt());
@@ -90,11 +111,11 @@ public class SimpleNBTParser {
         return array;
     }
 
-    private JsonArray readLongArray(ByteBuffer buffer) {
+    private ArrayNode readLongArray(ByteBuffer buffer) {
 
         int size = buffer.getInt();
 
-        JsonArray array = new JsonArray();
+        ArrayNode array = Json.createArray();
 
         for (int i = 0; i < size; i++) {
             array.add(buffer.getLong());
@@ -103,43 +124,58 @@ public class SimpleNBTParser {
         return array;
     }
 
-    private JsonPrimitive readString(ByteBuffer buffer) {
+    private JsonNode readString(ByteBuffer buffer) {
 
-        int length = buffer.getShort() & 0xFF;
-
+        int length = buffer.getShort() & 0xFFFF;
         byte[] bytes = new byte[length];
 
         buffer.get(bytes);
 
-        return new JsonPrimitive(new String(bytes));
+        return Json.createTextNode(new String(bytes, StandardCharsets.UTF_8));
     }
 
-    private JsonArray readList(ByteBuffer buffer) {
+    private ArrayNode readList(ByteBuffer buffer) {
 
         byte tagId = buffer.get();
         int size = buffer.getInt();
 
-        JsonArray array = new JsonArray();
+        ArrayNode array = Json.createArray();
 
         for (int i = 0; i < size; i++) {
-            array.add(read(tagId, buffer));
+            array.add(readTag(tagId, buffer));
         }
 
         return array;
     }
 
-    private JsonObject readCompound(ByteBuffer buffer) {
+    private ObjectNode readCompound(ByteBuffer buffer) {
 
-        JsonObject compound = new JsonObject();
+        ObjectNode compound = Json.createObject();
 
         byte tagId = buffer.get();
 
         while (tagId != 0) {
 
             String name = readName(buffer);
-            JsonElement value = read(tagId, buffer);
 
-            compound.add(name, value);
+            JsonNode value;
+
+            try {
+                value = readTag(tagId, buffer);
+            } catch (Exception ex) {
+                try {
+                    System.out.println(Json.stringify(compound, true));
+                } catch (Exception ex1) {
+                    ex.printStackTrace();
+                }
+                throw ex;
+            }
+
+            if (value == null) {
+                return compound;
+            }
+
+            compound.set(name, value);
 
             if (!buffer.hasRemaining()) {
                 return compound;
